@@ -3,6 +3,7 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,11 +14,10 @@ namespace DomainHomepageNavTabs
     {
         static void Main(string[] args)
         {
-
         }
 
         IWebDriver driver = new ChromeDriver();
-
+       
         [SetUp]
         public void GetDomainHomePage()
         {
@@ -31,83 +31,52 @@ namespace DomainHomepageNavTabs
             Assert.IsTrue(js.ExecuteScript("return document.readyState").ToString().Equals("complete"));
         }
 
-        //[Test]
-        //public void ClickAllTab()
-        //{
-        //    //By Expected Result Array  
-        //    string tabs = ["Buy","Rent"];
-
-        //    //By selecting all nav links (inlcudes more such as those within dropdown)
-        //    string tabs = driver.FindElement(By.CssSelector(".main-nav-ul a"));
-
-        //    try (var tab in tabs)
-        //    {   
-        //        driver.FindElement(By.LinkText(tab)).Click();
-        //        checkPageLoad();
-        //    }
-
-        //}
-
         [Test]
-        public void ClickBuyTab()
+        public void VerifyHomePageNavLinks()
         {
-            driver.FindElement(By.LinkText("Buy")).Click();
-            checkPageLoad();
+            int count = driver.FindElements(By.CssSelector(".main-nav-ul a")).Count();
+            Console.WriteLine("Number of Nav Menu links: " + count);
+
+            for (int i = 0; i < count; i++)
+            {
+                long startTime = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond;
+                string navTab = String.Format("//*[@class='main-nav-ul']//a", i);
+
+                //Workaround: Ensures the final few tabs aren't hidden in dropdown
+                driver.FindElement(By.XPath("//*[@class='main-nav-ul']//li[@class='dropdown']")).Click();
+
+                //1. Find tab name in Nav Menu
+                var tabs = driver.FindElements(By.XPath(navTab));
+                Console.WriteLine("About to click:  " + tabs[i].Text);
+
+                //2. Click the tab in current iteration
+                tabs[i].Click();
+
+                //3. Verify Page load completes
+                checkPageLoad();
+
+                //Calculate time to load (note: not a very high resolution timer)
+                long finishTime = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond;
+                long totalTime_ms = finishTime - startTime;
+                long totalTime_s = totalTime_ms / 1000;
+                Console.WriteLine("  Total Time for page load - " + totalTime_ms + "ms (" + totalTime_s + "s)");
+
+                //Clean Up: This test explicitly tests navigation FROM the homepage. 
+                driver.Navigate().GoToUrl("http://www.domain.com.au");
+
+                //todo: ask devs if worth testing from any other pages (some lack Nav Menu).
+            }
         }
 
-        [Test]
-        public void ClickRentTab()
+        [TearDown]
+        public void CleanUp()
         {
-            driver.FindElement(By.LinkText("Rent")).Click();
-            checkPageLoad();
-        }
+            driver.Close();
 
-        [Test]
-        public void ClickNewHomesTab()
-        {
-            driver.FindElement(By.LinkText("New Homes")).Click();
-            checkPageLoad();
+            foreach (var process in Process.GetProcessesByName("chromedriver.exe"))
+            {
+                process.Kill();
+            }
         }
-
-        [Test]
-        public void ClickSoldTab()
-        {
-            driver.FindElement(By.LinkText("Sold")).Click();
-            checkPageLoad();
-        }
-
-        [Test]
-        public void ClickNewsTab()
-        {
-            driver.FindElement(By.LinkText("News")).Click();
-            checkPageLoad();
-        }
-
-        [Test]
-        public void ClickAdviceTab()
-        {
-            driver.FindElement(By.LinkText("Advice")).Click();
-            checkPageLoad();
-        }
-
-        [Test]
-        public void ClickAgentsTab()
-        {
-            driver.FindElement(By.LinkText("Agents")).Click();
-            checkPageLoad();
-        }
-
-        [Test]
-        public void ClickMoreTab()
-        {
-            driver.FindElement(By.LinkText("More")).Click();
-            checkPageLoad();
-        }
-
-        //[TearDown] //need to tear down after all test...current behaviour is to tear down after first test.
-        //public void CleanUp()
-        //{
-        //    driver.Close();
-        //}
     }
 }
